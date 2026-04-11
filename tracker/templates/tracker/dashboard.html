@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpendFix Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .content-section { transition: all 0.3s ease; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen overflow-hidden">
+
+    <div class="w-64 bg-gray-900 text-white flex flex-col shadow-xl">
+        <div class="p-6 text-2xl font-bold text-yellow-400 border-b border-gray-700">
+            SpendFix <span class="text-white">Portal</span>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-btn w-full flex items-center p-3 bg-yellow-500 text-gray-900 rounded-lg font-bold shadow-md transition">
+                <i class="fas fa-chart-pie mr-3"></i> Dashboard
+            </button>
+            <button onclick="showSection('users')" id="btn-users" class="nav-btn w-full flex items-center p-3 text-white hover:bg-gray-800 rounded-lg transition">
+                <i class="fas fa-users mr-3"></i> Manage Users
+            </button>
+            <button onclick="showSection('categories')" id="btn-categories" class="nav-btn w-full flex items-center p-3 text-white hover:bg-gray-800 rounded-lg transition">
+                <i class="fas fa-layer-group mr-3"></i> Categories
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700">
+            <a href="{% url 'portal_logout' %}" class="flex items-center text-red-400 hover:text-red-300 transition px-3 py-2 font-bold">
+                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-y-auto">
+        <header class="bg-white p-6 shadow-sm flex justify-between items-center sticky top-0 z-10">
+            <h1 id="header-title" class="text-2xl font-bold text-gray-800">Admin Analytics</h1>
+            <div class="flex items-center space-x-4">
+                <span class="bg-yellow-100 text-yellow-800 px-4 py-1 rounded-full text-sm font-bold border border-yellow-200">
+                    <i class="fas fa-circle text-[10px] mr-2 text-green-500 animate-pulse"></i>Live System
+                </span>
+                <div class="text-gray-500 text-sm font-medium">Welcome, Admin</div>
+            </div>
+        </header>
+
+        <main class="p-6">
+            <div id="section-dashboard" class="content-section">
+                <div class="grid grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md transition">
+                        <h3 class="text-gray-500 text-sm font-bold uppercase">Total Users</h3>
+                        <p class="text-3xl font-bold text-gray-800">{{ total_users }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500 hover:shadow-md transition">
+                        <h3 class="text-gray-500 text-sm font-bold uppercase">App Categories</h3>
+                        <p class="text-3xl font-bold text-gray-800">{{ total_categories }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md transition">
+                        <h3 class="text-gray-500 text-sm font-bold uppercase">Transactions Logged</h3>
+                        <p class="text-3xl font-bold text-gray-800">{{ total_transactions }}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-blue-600">Recent Users</h2>
+                        <table class="w-full text-left">
+                            <tbody class="divide-y divide-gray-100">
+                                {% for user in users_list|slice:":5" %}
+                                <tr>
+                                    <td class="py-3 font-semibold text-gray-700">{{ user.username }}</td>
+                                    <td class="py-3 text-gray-500 text-sm">{{ user.date_joined|date:"d M Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-yellow-600">App Categories</h2>
+                        <table class="w-full text-left">
+                            <tbody class="divide-y divide-gray-100">
+                                {% for cat in categories_list|slice:":5" %}
+                                <tr>
+                                    <td class="py-3 text-gray-400">#{{ cat.id }}</td>
+                                    <td class="py-3 font-bold text-gray-700">{{ cat.name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-users" class="content-section hidden">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-users mr-2 text-blue-500"></i> User Management</h2>
+                        <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search users by name..." class="border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-80">
+                    </div>
+                    <table class="w-full text-left border-collapse" id="userTable">
+                        <thead class="bg-gray-50">
+                            <tr class="text-gray-600 text-sm font-bold">
+                                <th class="p-4 border-b">Username</th>
+                                <th class="p-4 border-b">Email</th>
+                                <th class="p-4 border-b">Joined</th>
+                                <th class="p-4 border-b">Status</th>
+                                <th class="p-4 border-b text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for user in users_list %}
+                            <tr class="user-row hover:bg-gray-50 transition">
+                                <td class="p-4 font-bold text-gray-800">{{ user.username }}</td>
+                                <td class="p-4 text-gray-600 text-sm">{{ user.email }}</td>
+                                <td class="p-4 text-gray-500 text-sm">{{ user.date_joined|date:"d M Y, H:i" }}</td>
+                                <td class="p-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold {% if user.is_active %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                        {% if user.is_active %}Active{% else %}Blocked{% endif %}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-right flex justify-end space-x-2">
+                                    <button onclick="viewUserTransactions('{{ user.id }}')" 
+                                            class="px-4 py-2 rounded-lg font-bold text-xs text-white bg-blue-500 hover:bg-blue-600 shadow-md transition">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <button onclick="toggleUser('{{ user.id }}')" 
+                                            class="px-4 py-2 rounded-lg font-bold text-xs text-white shadow-md transition
+                                                   {% if user.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %}">
+                                        {% if user.is_active %}
+                                            <i class="fas fa-ban mr-1"></i> Block
+                                        {% else %}
+                                            <i class="fas fa-check-circle mr-1"></i> Unblock
+                                        {% endif %}
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    <div id="userPagination" class="flex justify-end mt-6 space-x-2"></div>
+                </div>
+            </div>
+
+            <div id="section-categories" class="content-section hidden">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-layer-group mr-2 text-yellow-500"></i> App Categories</h2>
+                        <button onclick="openModal('addModal')" class="bg-yellow-500 hover:bg-yellow-600 text-black px-6 py-2 rounded-lg font-bold shadow-md transition">
+                            <i class="fas fa-plus mr-2"></i> Add New Category
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="categoryGrid">
+                        {% for cat in categories_list %}
+                        <div class="cat-card border p-4 rounded-xl flex justify-between items-center hover:border-yellow-400 transition bg-gray-50 shadow-sm">
+                            <div>
+                                <span class="text-xs text-gray-400 font-mono">ID: #{{ cat.id }}</span>
+                                <h3 class="font-bold text-lg text-gray-800">{{ cat.name }}</h3>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button onclick="openEditModal('{{ cat.id }}', '{{ cat.name }}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit text-xl"></i></button>
+                                <button onclick="deleteCategory('{{ cat.id }}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt text-xl"></i></button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div id="catPagination" class="flex justify-end mt-6 space-x-2"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="addModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-96 shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">Add New Category</h2>
+            <form action="{% url 'add_category' %}" method="POST">
+                {% csrf_token %}
+                <input type="text" name="name" required placeholder="Enter category name" class="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-yellow-400 outline-none">
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('addModal')" class="bg-gray-200 px-4 py-2 rounded-lg font-bold">Cancel</button>
+                    <button type="submit" class="bg-yellow-500 px-4 py-2 rounded-lg font-bold">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-96 shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 text-blue-600">Edit Category</h2>
+            <form id="editForm" method="POST">
+                {% csrf_token %}
+                <input type="text" id="editName" name="name" required class="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-blue-400 outline-none">
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('editModal')" class="bg-gray-200 px-4 py-2 rounded-lg font-bold">Cancel</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="txModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl w-3/4 max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-blue-600" id="txModalTitle">User Transactions</h2>
+                <button onclick="closeModal('txModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="overflow-y-auto flex-1 mb-4">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                        <tr class="text-gray-600 text-sm font-bold">
+                            <th class="p-3 border-b">Date</th>
+                            <th class="p-3 border-b">Category</th>
+                            <th class="p-3 border-b">Note</th>
+                            <th class="p-3 border-b">Type</th>
+                            <th class="p-3 border-b">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="txTableBody" class="divide-y divide-gray-100">
+                        </tbody>
+                </table>
+            </div>
+            <div id="txPagination" class="flex justify-center space-x-2 pt-4 border-t"></div>
+        </div>
+    </div>
+
+    <script>
+        // 🚀 SMART DOM PAGINATION CLASS WITH SLIDING WINDOW
+        class DOMPaginator {
+            constructor(itemSelector, containerId, itemsPerPage) {
+                this.itemSelector = itemSelector;
+                this.container = document.getElementById(containerId);
+                this.itemsPerPage = itemsPerPage;
+                this.allItems = Array.from(document.querySelectorAll(itemSelector));
+                this.activeItems = [...this.allItems]; 
+                
+                if(this.allItems.length > 0) {
+                    this.goToPage(1);
+                }
+            }
+
+            updateActiveItems(visibleItemsArray) {
+                this.activeItems = visibleItemsArray;
+                this.goToPage(1);
+            }
+
+            goToPage(page) {
+                let totalPages = Math.ceil(this.activeItems.length / this.itemsPerPage);
+                if (totalPages === 0) totalPages = 1;
+                if (page < 1) page = 1;
+                if (page > totalPages) page = totalPages;
+                
+                this.allItems.forEach(el => el.style.display = 'none');
+                
+                let start = (page - 1) * this.itemsPerPage;
+                let end = start + this.itemsPerPage;
+                for(let i = start; i < end && i < this.activeItems.length; i++) {
+                    this.activeItems[i].style.display = '';
+                }
+                
+                this.renderButtons(page, totalPages);
+            }
+
+            renderButtons(currentPage, totalPages) {
+                this.container.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                // 🎯 SLIDING WINDOW LOGIC (3 Buttons max)
+                let startPage = Math.max(1, currentPage - 1);
+                let endPage = Math.min(totalPages, startPage + 2);
+
+                if (endPage === totalPages) {
+                    startPage = Math.max(1, totalPages - 2);
+                }
+                if (startPage === 1) {
+                    endPage = Math.min(totalPages, 3);
+                }
+
+                // Previous Button
+                let prev = document.createElement('button');
+                prev.innerText = 'Prev';
+                prev.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
+                prev.onclick = () => { if(currentPage > 1) this.goToPage(currentPage - 1); };
+                this.container.appendChild(prev);
+
+                // Page Number Buttons
+                for(let i = startPage; i <= endPage; i++) {
+                    let btn = document.createElement('button');
+                    btn.innerText = i;
+                    btn.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === i ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'}`;
+                    btn.onclick = () => this.goToPage(i);
+                    this.container.appendChild(btn);
+                }
+
+                // Next Button
+                let next = document.createElement('button');
+                next.innerText = 'Next';
+                next.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
+                next.onclick = () => { if(currentPage < totalPages) this.goToPage(currentPage + 1); };
+                this.container.appendChild(next);
+            }
+        }
+
+        let userPaginator, catPaginator;
+        document.addEventListener("DOMContentLoaded", () => {
+            userPaginator = new DOMPaginator('.user-row', 'userPagination', 5); 
+            catPaginator = new DOMPaginator('.cat-card', 'catPagination', 6);   
+        });
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('section-' + sectionId).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-yellow-500', 'text-gray-900', 'font-bold', 'shadow-md');
+                btn.classList.add('text-white', 'hover:bg-gray-800');
+            });
+            const activeBtn = document.getElementById('btn-' + sectionId);
+            activeBtn.classList.add('bg-yellow-500', 'text-gray-900', 'font-bold', 'shadow-md');
+            activeBtn.classList.remove('text-white', 'hover:bg-gray-800');
+            document.getElementById('header-title').innerText = sectionId.charAt(0).toUpperCase() + sectionId.slice(1) + ' Management';
+        }
+
+        function filterUsers() {
+            let input = document.getElementById('userSearch').value.toLowerCase();
+            let allRows = Array.from(document.querySelectorAll('.user-row'));
+            let visibleRows = [];
+            
+            allRows.forEach(row => {
+                if(row.innerText.toLowerCase().includes(input)) {
+                    visibleRows.push(row);
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            if(userPaginator) userPaginator.updateActiveItems(visibleRows);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        
+        function openEditModal(id, name) {
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editName').value = name;
+            let url = "{% url 'edit_category' 0 %}".replace('0', id);
+            document.getElementById('editForm').action = url;
+        }
+
+        function toggleUser(userId) {
+            let url = "{% url 'toggle_user' 0 %}".replace('0', userId);
+            fetch(url, { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }})
+            .then(() => location.reload());
+        }
+
+        function deleteCategory(catId) {
+            if(!confirm("Delete this category forever?")) return;
+            let url = "{% url 'delete_category' 0 %}".replace('0', catId);
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') { location.reload(); }
+            });
+        }
+
+        // 🚀 API DATA PAGINATION LOGIC (For Transactions) WITH SLIDING WINDOW
+        let txDataGlobal = [];
+        const txPerPage = 5;
+
+        function viewUserTransactions(userId) {
+            openModal('txModal');
+            document.getElementById('txPagination').innerHTML = '';
+            document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center font-bold text-gray-500">Loading Transactions... <i class="fas fa-spinner fa-spin"></i></td></tr>';
+            
+            let url = "{% url 'user_transactions' 0 %}".replace('0', userId);
+            
+            fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('txModalTitle').innerText = data.user + "'s Transactions";
+                txDataGlobal = data.transactions || [];
+                
+                if(txDataGlobal.length === 0) {
+                    document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 font-bold">No transactions found for this user.</td></tr>';
+                } else {
+                    renderTxPage(1);
+                }
+            })
+            .catch(err => {
+                document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Failed to load data.</td></tr>';
+            });
+        }
+
+        function renderTxPage(page) {
+            let totalPages = Math.ceil(txDataGlobal.length / txPerPage);
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            let tbody = document.getElementById('txTableBody');
+            tbody.innerHTML = '';
+            
+            let start = (page - 1) * txPerPage;
+            let end = start + txPerPage;
+            let pageData = txDataGlobal.slice(start, end);
+
+            pageData.forEach(tx => {
+                let colorClass = tx.type === 'INCOME' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-3 text-sm text-gray-600">${tx.date}</td>
+                        <td class="p-3 font-bold text-gray-800">${tx.category}</td>
+                        <td class="p-3 text-sm text-gray-500">${tx.note}</td>
+                        <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold ${colorClass}">${tx.type}</span></td>
+                        <td class="p-3 font-bold text-lg">₹${tx.amount}</td>
+                    </tr>
+                `;
+            });
+
+            let container = document.getElementById('txPagination');
+            container.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            // 🎯 SLIDING WINDOW LOGIC (3 Buttons max)
+            let startPage = Math.max(1, page - 1);
+            let endPage = Math.min(totalPages, startPage + 2);
+
+            if (endPage === totalPages) {
+                startPage = Math.max(1, totalPages - 2);
+            }
+            if (startPage === 1) {
+                endPage = Math.min(totalPages, 3);
+            }
+
+            let prev = document.createElement('button');
+            prev.innerText = 'Prev';
+            prev.className = `px-3 py-1 rounded border font-bold text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
+            prev.onclick = () => { if(page > 1) renderTxPage(page - 1); };
+            container.appendChild(prev);
+
+            for(let i = startPage; i <= endPage; i++) {
+                let btn = document.createElement('button');
+                btn.innerText = i;
+                btn.className = `px-3 py-1 rounded border font-bold text-sm ${page === i ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'}`;
+                btn.onclick = () => renderTxPage(i);
+                container.appendChild(btn);
+            }
+
+            let next = document.createElement('button');
+            next.innerText = 'Next';
+            next.className = `px-3 py-1 rounded border font-bold text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
+            next.onclick = () => { if(page < totalPages) renderTxPage(page + 1); };
+            container.appendChild(next);
+        }
+    </script>
+</body>
+</html>
