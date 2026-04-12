@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os  # <--- Sabse upar hona chahiye
 from datetime import timedelta
 from pathlib import Path
 
@@ -27,8 +27,10 @@ SECRET_KEY = 'django-insecure-&&7^qpnkl2cfg)ft!%jgx$!7a_sjmzp6mjy=^!#oy^=ecxg3-l
 DEBUG = True
 
 # settings.py
-ALLOWED_HOSTS = ['72.60.223.238', 'localhost', '127.0.0.1', '*'] # '*' Presentation ke liye safe hai
-
+ALLOWED_HOSTS = ["www.spendfix.shreejifintech.com"] # '*' Presentation ke liye safe hai
+CSRF_TRUSTED_ORIGINS = [
+ 'https://www.spendfix.shreejifintech.com'
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -157,6 +159,7 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # <--- Ye line zaroori hai
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
