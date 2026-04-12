@@ -190,13 +190,12 @@ class GoogleLoginView(views.APIView):
                     username = f"{base_username}{counter}"
                     counter += 1
                 
-                dummy_phone = f"G-{str(uuid.uuid4().int)[:10]}" 
                 random_password = get_random_string(24)
 
                 user = CustomUser.objects.create_user(
                     username=username,
                     email=email,
-                    phone=dummy_phone,
+                    phone='',
                     password=random_password,
                     first_name=google_name
                 )
@@ -276,7 +275,7 @@ class ForgotPasswordView(views.APIView):
             user.save()
 
             # Email bhejte waqt error catch karo
-            subject = "SpendFix - Reset OTP"
+            subject = "SpendFix - Reset OTP" 
             message = f"OTP: {otp}"
             
             send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])

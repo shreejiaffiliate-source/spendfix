@@ -2,7 +2,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class CustomUser(AbstractUser):
-    phone = models.CharField(max_length=15, unique=True)
+    phone = models.CharField(
+    max_length=15, 
+    unique=True,      # Unique rehne do (agar aap chahte ho)
+    null=True,        # 🎯 YE SABSE ZAROORI HAI
+    blank=True, 
+    default=None      # 🎯 Default null rakho
+    )
     email = models.EmailField(unique=True)
     otp = models.CharField(max_length=6, blank=True, null=True)
     fcm_token = models.CharField(max_length=255, blank=True, null=True)

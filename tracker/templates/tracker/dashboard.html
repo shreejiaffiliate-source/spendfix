@@ -8,6 +8,8 @@
     <style>
         .content-section { transition: all 0.3s ease; }
         .hidden { display: none; }
+        /* 🎯 Active filter button style */
+        .active-filter { background-color: #fbbf24 !important; color: #000 !important; border-color: #d97706 !important; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans flex h-screen overflow-hidden">
@@ -129,18 +131,13 @@
                                     <button onclick="toggleUser('{{ user.id }}')" 
                                             class="px-4 py-2 rounded-lg font-bold text-xs text-white shadow-md transition
                                                    {% if user.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %}">
-                                        {% if user.is_active %}
-                                            <i class="fas fa-ban mr-1"></i> Block
-                                        {% else %}
-                                            <i class="fas fa-check-circle mr-1"></i> Unblock
-                                        {% endif %}
+                                        {% if user.is_active %}<i class="fas fa-ban mr-1"></i> Block{% else %}<i class="fas fa-check-circle mr-1"></i> Unblock{% endif %}
                                     </button>
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    
                     <div id="userPagination" class="flex justify-end mt-6 space-x-2"></div>
                 </div>
             </div>
@@ -167,7 +164,6 @@
                         </div>
                         {% endfor %}
                     </div>
-
                     <div id="catPagination" class="flex justify-end mt-6 space-x-2"></div>
                 </div>
             </div>
@@ -203,14 +199,27 @@
     </div>
 
     <div id="txModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-xl w-3/4 max-h-[80vh] flex flex-col shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-blue-600" id="txModalTitle">User Transactions</h2>
-                <button onclick="closeModal('txModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+        <div class="bg-white p-6 rounded-xl w-4/5 max-h-[85vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-blue-600" id="txModalTitle">User Transactions</h2>
+                    <p class="text-gray-500 text-sm" id="txUserSubtitle"></p>
+                </div>
+                <button onclick="closeModal('txModal')" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times-circle text-2xl"></i></button>
             </div>
-            <div class="overflow-y-auto flex-1 mb-4">
+
+            <div class="flex items-center space-x-2 mb-6 bg-gray-50 p-3 rounded-lg border">
+                <span class="text-gray-600 font-bold mr-2"><i class="fas fa-filter text-blue-500"></i> Period:</span>
+                <button onclick="filterTxByPeriod('all')" id="filter-all" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold active-filter">All Time</button>
+                <button onclick="filterTxByPeriod('day')" id="filter-day" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">Today</button>
+                <button onclick="filterTxByPeriod('week')" id="filter-week" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Week</button>
+                <button onclick="filterTxByPeriod('month')" id="filter-month" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Month</button>
+                <button onclick="filterTxByPeriod('year')" id="filter-year" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Year</button>
+            </div>
+
+            <div class="overflow-y-auto flex-1">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                    <thead class="bg-gray-100 sticky top-0 shadow-sm">
                         <tr class="text-gray-600 text-sm font-bold">
                             <th class="p-3 border-b">Date</th>
                             <th class="p-3 border-b">Category</th>
@@ -223,12 +232,12 @@
                         </tbody>
                 </table>
             </div>
-            <div id="txPagination" class="flex justify-center space-x-2 pt-4 border-t"></div>
+            <div id="txPagination" class="flex justify-center space-x-2 pt-4 border-t mt-4"></div>
         </div>
     </div>
 
     <script>
-        // 🚀 SMART DOM PAGINATION CLASS WITH SLIDING WINDOW
+        // --- PAGINATION CLASS ---
         class DOMPaginator {
             constructor(itemSelector, containerId, itemsPerPage) {
                 this.itemSelector = itemSelector;
@@ -236,75 +245,52 @@
                 this.itemsPerPage = itemsPerPage;
                 this.allItems = Array.from(document.querySelectorAll(itemSelector));
                 this.activeItems = [...this.allItems]; 
-                
-                if(this.allItems.length > 0) {
-                    this.goToPage(1);
-                }
+                if(this.allItems.length > 0) this.goToPage(1);
             }
-
             updateActiveItems(visibleItemsArray) {
                 this.activeItems = visibleItemsArray;
                 this.goToPage(1);
             }
-
             goToPage(page) {
                 let totalPages = Math.ceil(this.activeItems.length / this.itemsPerPage);
                 if (totalPages === 0) totalPages = 1;
                 if (page < 1) page = 1;
                 if (page > totalPages) page = totalPages;
-                
                 this.allItems.forEach(el => el.style.display = 'none');
-                
                 let start = (page - 1) * this.itemsPerPage;
                 let end = start + this.itemsPerPage;
                 for(let i = start; i < end && i < this.activeItems.length; i++) {
                     this.activeItems[i].style.display = '';
                 }
-                
                 this.renderButtons(page, totalPages);
             }
-
             renderButtons(currentPage, totalPages) {
                 this.container.innerHTML = '';
                 if (totalPages <= 1) return;
-
-                // 🎯 SLIDING WINDOW LOGIC (3 Buttons max)
                 let startPage = Math.max(1, currentPage - 1);
                 let endPage = Math.min(totalPages, startPage + 2);
+                if (endPage === totalPages) startPage = Math.max(1, totalPages - 2);
+                if (startPage === 1) endPage = Math.min(totalPages, 3);
 
-                if (endPage === totalPages) {
-                    startPage = Math.max(1, totalPages - 2);
-                }
-                if (startPage === 1) {
-                    endPage = Math.min(totalPages, 3);
-                }
-
-                // Previous Button
-                let prev = document.createElement('button');
-                prev.innerText = 'Prev';
-                prev.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
-                prev.onclick = () => { if(currentPage > 1) this.goToPage(currentPage - 1); };
-                this.container.appendChild(prev);
-
-                // Page Number Buttons
-                for(let i = startPage; i <= endPage; i++) {
+                const createBtn = (text, targetPage, isCurrent, isDisabled) => {
                     let btn = document.createElement('button');
-                    btn.innerText = i;
-                    btn.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === i ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'}`;
-                    btn.onclick = () => this.goToPage(i);
-                    this.container.appendChild(btn);
-                }
+                    btn.innerText = text;
+                    btn.className = `px-3 py-1 rounded border font-bold text-sm ${isDisabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : (isCurrent ? 'bg-gray-900 text-white' : 'bg-white hover:bg-gray-100')}`;
+                    if(!isDisabled) btn.onclick = () => this.goToPage(targetPage);
+                    return btn;
+                };
 
-                // Next Button
-                let next = document.createElement('button');
-                next.innerText = 'Next';
-                next.className = `px-3 py-1 rounded border font-bold text-sm ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
-                next.onclick = () => { if(currentPage < totalPages) this.goToPage(currentPage + 1); };
-                this.container.appendChild(next);
+                this.container.appendChild(createBtn('Prev', currentPage - 1, false, currentPage === 1));
+                for(let i = startPage; i <= endPage; i++) this.container.appendChild(createBtn(i, i, i === currentPage, false));
+                this.container.appendChild(createBtn('Next', currentPage + 1, false, currentPage === totalPages));
             }
         }
 
         let userPaginator, catPaginator;
+        let currentUserIdGlobal = null;
+        let txDataGlobal = [];
+        const txPerPage = 6;
+
         document.addEventListener("DOMContentLoaded", () => {
             userPaginator = new DOMPaginator('.user-row', 'userPagination', 5); 
             catPaginator = new DOMPaginator('.cat-card', 'catPagination', 6);   
@@ -326,15 +312,8 @@
         function filterUsers() {
             let input = document.getElementById('userSearch').value.toLowerCase();
             let allRows = Array.from(document.querySelectorAll('.user-row'));
-            let visibleRows = [];
-            
-            allRows.forEach(row => {
-                if(row.innerText.toLowerCase().includes(input)) {
-                    visibleRows.push(row);
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            let visibleRows = allRows.filter(row => row.innerText.toLowerCase().includes(input));
+            allRows.forEach(row => row.style.display = 'none');
             if(userPaginator) userPaginator.updateActiveItems(visibleRows);
         }
 
@@ -344,116 +323,101 @@
         function openEditModal(id, name) {
             document.getElementById('editModal').classList.remove('hidden');
             document.getElementById('editName').value = name;
-            let url = "{% url 'edit_category' 0 %}".replace('0', id);
-            document.getElementById('editForm').action = url;
+            document.getElementById('editForm').action = "{% url 'edit_category' 0 %}".replace('0', id);
         }
 
         function toggleUser(userId) {
-            let url = "{% url 'toggle_user' 0 %}".replace('0', userId);
-            fetch(url, { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }})
+            fetch("{% url 'toggle_user' 0 %}".replace('0', userId), { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }})
             .then(() => location.reload());
         }
 
         function deleteCategory(catId) {
-            if(!confirm("Delete this category forever?")) return;
-            let url = "{% url 'delete_category' 0 %}".replace('0', catId);
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') { location.reload(); }
-            });
+            if(!confirm("Delete this category?")) return;
+            fetch("{% url 'delete_category' 0 %}".replace('0', catId), { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' }})
+            .then(res => res.json()).then(data => { if(data.status === 'success') location.reload(); });
         }
 
-        // 🚀 API DATA PAGINATION LOGIC (For Transactions) WITH SLIDING WINDOW
-        let txDataGlobal = [];
-        const txPerPage = 5;
+        // --- 🚀 UPGRADED TRANSACTION LOGIC ---
 
         function viewUserTransactions(userId) {
+            currentUserIdGlobal = userId;
             openModal('txModal');
-            document.getElementById('txPagination').innerHTML = '';
-            document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center font-bold text-gray-500">Loading Transactions... <i class="fas fa-spinner fa-spin"></i></td></tr>';
+            filterTxByPeriod('all'); // Default load all
+        }
+
+        function filterTxByPeriod(period) {
+            // Update Filter Button UI
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active-filter', 'bg-white'));
+            document.getElementById('filter-' + period).classList.add('active-filter');
+
+            const tbody = document.getElementById('txTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center font-bold text-gray-400">Fetching data... <i class="fas fa-spinner fa-spin ml-2"></i></td></tr>';
             
-            let url = "{% url 'user_transactions' 0 %}".replace('0', userId);
+            // 🎯 Calling the API with period parameter
+            let url = "{% url 'user_transactions' 0 %}".replace('0', currentUserIdGlobal) + `?period=${period}`;
             
             fetch(url)
             .then(res => res.json())
             .then(data => {
-                document.getElementById('txModalTitle').innerText = data.user + "'s Transactions";
+                document.getElementById('txUserSubtitle').innerText = "Viewing ledger for " + data.user;
                 txDataGlobal = data.transactions || [];
-                
-                if(txDataGlobal.length === 0) {
-                    document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 font-bold">No transactions found for this user.</td></tr>';
-                } else {
-                    renderTxPage(1);
-                }
+                renderTxPage(1);
             })
-            .catch(err => {
-                document.getElementById('txTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500 font-bold">Failed to load data.</td></tr>';
+            .catch(() => {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Failed to load transactions.</td></tr>';
             });
         }
 
         function renderTxPage(page) {
-            let totalPages = Math.ceil(txDataGlobal.length / txPerPage);
-            if (page < 1) page = 1;
-            if (page > totalPages) page = totalPages;
-
-            let tbody = document.getElementById('txTableBody');
+            const tbody = document.getElementById('txTableBody');
             tbody.innerHTML = '';
             
+            let totalPages = Math.ceil(txDataGlobal.length / txPerPage);
+            if (totalPages === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400">No records found for this period.</td></tr>';
+                document.getElementById('txPagination').innerHTML = '';
+                return;
+            }
+
             let start = (page - 1) * txPerPage;
-            let end = start + txPerPage;
-            let pageData = txDataGlobal.slice(start, end);
+            let pageData = txDataGlobal.slice(start, start + txPerPage);
 
             pageData.forEach(tx => {
                 let colorClass = tx.type === 'INCOME' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="p-3 text-sm text-gray-600">${tx.date}</td>
-                        <td class="p-3 font-bold text-gray-800">${tx.category}</td>
-                        <td class="p-3 text-sm text-gray-500">${tx.note}</td>
-                        <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold ${colorClass}">${tx.type}</span></td>
-                        <td class="p-3 font-bold text-lg">₹${tx.amount}</td>
-                    </tr>
-                `;
+                    <tr class="hover:bg-blue-50 transition">
+                        <td class="p-4 text-sm text-gray-500 font-medium">${tx.date}</td>
+                        <td class="p-4 font-bold text-gray-800">${tx.category}</td>
+                        <td class="p-4 text-sm text-gray-400 italic">${tx.note}</td>
+                        <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${colorClass}">${tx.type}</span></td>
+                        <td class="p-4 font-black text-lg text-gray-900">₹${tx.amount}</td>
+                    </tr>`;
             });
 
-            let container = document.getElementById('txPagination');
+            renderTxPaginationButtons(page, totalPages);
+        }
+
+        function renderTxPaginationButtons(currentPage, totalPages) {
+            const container = document.getElementById('txPagination');
             container.innerHTML = '';
             if (totalPages <= 1) return;
 
-            // 🎯 SLIDING WINDOW LOGIC (3 Buttons max)
-            let startPage = Math.max(1, page - 1);
+            let startPage = Math.max(1, currentPage - 1);
             let endPage = Math.min(totalPages, startPage + 2);
+            if (endPage === totalPages) startPage = Math.max(1, totalPages - 2);
+            if (startPage === 1) endPage = Math.min(totalPages, 3);
 
-            if (endPage === totalPages) {
-                startPage = Math.max(1, totalPages - 2);
-            }
-            if (startPage === 1) {
-                endPage = Math.min(totalPages, 3);
-            }
-
-            let prev = document.createElement('button');
-            prev.innerText = 'Prev';
-            prev.className = `px-3 py-1 rounded border font-bold text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
-            prev.onclick = () => { if(page > 1) renderTxPage(page - 1); };
-            container.appendChild(prev);
-
-            for(let i = startPage; i <= endPage; i++) {
+            const createBtn = (text, target, isCurrent, isDisabled) => {
                 let btn = document.createElement('button');
-                btn.innerText = i;
-                btn.className = `px-3 py-1 rounded border font-bold text-sm ${page === i ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'}`;
-                btn.onclick = () => renderTxPage(i);
-                container.appendChild(btn);
-            }
+                btn.innerText = text;
+                btn.className = `px-4 py-2 rounded-lg border font-bold text-xs shadow-sm transition ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : (isCurrent ? 'bg-blue-600 text-white border-blue-700' : 'bg-white hover:bg-gray-100')}`;
+                if(!isDisabled) btn.onclick = () => renderTxPage(target);
+                return btn;
+            };
 
-            let next = document.createElement('button');
-            next.innerText = 'Next';
-            next.className = `px-3 py-1 rounded border font-bold text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600'}`;
-            next.onclick = () => { if(page < totalPages) renderTxPage(page + 1); };
-            container.appendChild(next);
+            container.appendChild(createBtn('Prev', currentPage - 1, false, currentPage === 1));
+            for(let i = startPage; i <= endPage; i++) container.appendChild(createBtn(i, i, i === currentPage, false));
+            container.appendChild(createBtn('Next', currentPage + 1, false, currentPage === totalPages));
         }
     </script>
 </body>

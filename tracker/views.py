@@ -97,24 +97,45 @@ def delete_category(request, cat_id):
         category.delete()
         return JsonResponse({'status': 'success'})
 
-# 6. Specific user ki transactions laane ke liye
+from django.utils import timezone
+from datetime import timedelta
+
 @staff_member_required(login_url='/admin/login/')
 def user_transactions(request, user_id):
     user = get_object_or_404(User, id=user_id)
     txs = Transaction.objects.filter(user=user).order_by('-date')
     
+    period = request.GET.get('period', 'all')
+    now = timezone.now().date() # 🎯 Aaj ki date le li
+    
+    if period == 'day':
+        # 🎯 FIX: 'date__date' ki jagah sirf 'date' use karo
+        txs = txs.filter(date=now) 
+    elif period == 'week':
+        start_week = now - timedelta(days=now.weekday())
+        txs = txs.filter(date__gte=start_week)
+    elif period == 'month':
+        # 🎯 DateField par year aur month lookup sahi kaam karte hain
+        txs = txs.filter(date__month=now.month, date__year=now.year)
+    elif period == 'year':
+        txs = txs.filter(date__year=now.year)
+
     data = []
     for tx in txs:
         data.append({
             'id': tx.id,
-            'date': tx.date.strftime("%d %b %Y"),
+            'date': tx.date.strftime("%d %b %Y") if tx.date else "-",
             'category': tx.category,
             'type': tx.transaction_type,
             'amount': str(tx.amount),
             'note': tx.note if tx.note else '-'
         })
     
-    return JsonResponse({'user': user.username, 'transactions': data})
+    return JsonResponse({
+        'user': user.username, 
+        'transactions': data,
+        'total_count': txs.count()
+    })
 
 # 🚪 Logout
 def portal_logout(request):

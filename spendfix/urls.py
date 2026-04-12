@@ -18,10 +18,11 @@ from django.contrib import admin
 from django.urls import path , include
 from django.conf import settings # 🎯 Ye line add karein
 from django.conf.urls.static import static
-
+from django.views.generic.base import RedirectView # Ye line add karo
 from tracker.views import custom_dashboard # 🎯 Ye line add karein
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='portal/', permanent=True)),
     path('admin/', admin.site.urls),
     path('api/', include('account.urls')),
     path('api/tracker/', include('tracker.urls')), # Tracker ke raste (Naya)
