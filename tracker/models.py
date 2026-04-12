@@ -20,6 +20,20 @@ class Category(models.Model):
     def __str__(self):
         return f"{self.name} ({self.category_type})"
 
+
+# 🎯 2. NAYI TABLE: SIRF USER KI CUSTOM CATEGORIES KE LIYE
+class UserCustomCategory(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="custom_categories")
+    name = models.CharField(max_length=50)
+    category_type = models.CharField(max_length=10, choices=Category.TYPE_CHOICES, default='EXPENSE')
+    
+    class Meta:
+        unique_together = ('user', 'name') # Ek user 2 same naam wali category nahi bana sakta
+
+    def __str__(self):
+        return f"{self.user.username} - {self.name} ({self.category_type})"
+    
+    
 # trabsaction 
 class Transaction(models.Model):
     TRANSACTION_TYPES = (

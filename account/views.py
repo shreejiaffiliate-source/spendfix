@@ -221,7 +221,7 @@ class GoogleLoginView(views.APIView):
                 'id': user.id,
                 'username': display_name,
                 'email': user.email,
-                'phone': user.phone if not user.phone.startswith('G-') else "",
+                'phone': user.phone,
             }, status=200)
 
         except Exception as e:
