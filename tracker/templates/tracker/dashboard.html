@@ -8,7 +8,6 @@
     <style>
         .content-section { transition: all 0.3s ease; }
         .hidden { display: none; }
-        /* 🎯 Active filter button style */
         .active-filter { background-color: #fbbf24 !important; color: #000 !important; border-color: #d97706 !important; }
     </style>
 </head>
@@ -28,6 +27,9 @@
             </button>
             <button onclick="showSection('categories')" id="btn-categories" class="nav-btn w-full flex items-center p-3 text-white hover:bg-gray-800 rounded-lg transition">
                 <i class="fas fa-layer-group mr-3"></i> Categories
+            </button>
+            <button onclick="showSection('transactions')" id="btn-transactions" class="nav-btn w-full flex items-center p-3 text-white hover:bg-gray-800 rounded-lg transition">
+                <i class="fas fa-exchange-alt mr-3"></i> Transactions
             </button>
         </nav>
 
@@ -109,7 +111,7 @@
                                 <th class="p-4 border-b">Email</th>
                                 <th class="p-4 border-b">Joined</th>
                                 <th class="p-4 border-b">Status</th>
-                                <th class="p-4 border-b text-right">Actions</th>
+                                <th class="p-4 border-b text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -124,10 +126,6 @@
                                     </span>
                                 </td>
                                 <td class="p-4 text-right flex justify-end space-x-2">
-                                    <button onclick="viewUserTransactions('{{ user.id }}')" 
-                                            class="px-4 py-2 rounded-lg font-bold text-xs text-white bg-blue-500 hover:bg-blue-600 shadow-md transition">
-                                        <i class="fas fa-eye mr-1"></i> View
-                                    </button>
                                     <button onclick="toggleUser('{{ user.id }}')" 
                                             class="px-4 py-2 rounded-lg font-bold text-xs text-white shadow-md transition
                                                    {% if user.is_active %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %}">
@@ -167,6 +165,62 @@
                     <div id="catPagination" class="flex justify-end mt-6 space-x-2"></div>
                 </div>
             </div>
+
+            <div id="section-transactions" class="content-section hidden">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 border-b pb-4">
+                        
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-exchange-alt mr-2 text-green-500"></i> Transactions Ledger
+                            <span id="currentViewText" class="ml-4 px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 text-xs rounded-md shadow-sm font-bold tracking-wide">
+                                Showing: All Time
+                            </span>
+                        </h2>
+                        
+                        <div class="flex flex-wrap items-center bg-gray-50 p-2 rounded-lg border gap-2">
+                            <select id="userFilter" onchange="handleUserChange()" class="border p-1.5 rounded text-sm font-bold outline-none focus:ring-2 focus:ring-yellow-400 bg-white cursor-pointer">
+                                <option value="0">All Users</option>
+                                {% for u in users_list %}
+                                <option value="{{ u.id }}">{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+
+                            <div class="border-l pl-2 ml-1 flex space-x-2">
+                                <button onclick="fetchGlobalData('all')" id="g-all" class="g-filter-btn px-4 py-1.5 rounded text-sm font-bold border bg-white shadow-sm active-filter">All Time</button>
+                                <button onclick="fetchGlobalData('day')" id="g-day" class="g-filter-btn px-4 py-1.5 rounded text-sm font-bold border bg-white shadow-sm">Today</button>
+                                <button onclick="fetchGlobalData('week')" id="g-week" class="g-filter-btn px-4 py-1.5 rounded text-sm font-bold border bg-white shadow-sm">Week</button>
+                                <button onclick="fetchGlobalData('month')" id="g-month" class="g-filter-btn px-4 py-1.5 rounded text-sm font-bold border bg-white shadow-sm">Month</button>
+                                <button onclick="fetchGlobalData('year')" id="g-year" class="g-filter-btn px-4 py-1.5 rounded text-sm font-bold border bg-white shadow-sm">Year</button>
+                            </div>
+                            
+                            <div class="flex items-center border-l pl-3 ml-2 space-x-2">
+                                <input type="date" id="customStartDate" class="border p-1.5 rounded text-sm outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer">
+                                <span class="text-xs font-bold text-gray-400">TO</span>
+                                <input type="date" id="customEndDate" class="border p-1.5 rounded text-sm outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer">
+                                <button onclick="fetchGlobalData('custom')" id="g-custom" class="g-filter-btn bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-md transition">Search</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-gray-100 shadow-sm">
+                                <tr class="text-gray-600 text-sm font-bold">
+                                    <th class="p-4 border-b">Date</th>
+                                    <th class="p-4 border-b">User</th>
+                                    <th class="p-4 border-b">Category</th>
+                                    <th class="p-4 border-b">Type</th>
+                                    <th class="p-4 border-b text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="globalTxContainer" class="divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div id="globalTxPagination" class="flex justify-center space-x-2 pt-6 mt-2 border-t"></div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -198,46 +252,7 @@
         </div>
     </div>
 
-    <div id="txModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-xl w-4/5 max-h-[85vh] flex flex-col shadow-2xl">
-            <div class="flex justify-between items-center mb-4 border-b pb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-blue-600" id="txModalTitle">User Transactions</h2>
-                    <p class="text-gray-500 text-sm" id="txUserSubtitle"></p>
-                </div>
-                <button onclick="closeModal('txModal')" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times-circle text-2xl"></i></button>
-            </div>
-
-            <div class="flex items-center space-x-2 mb-6 bg-gray-50 p-3 rounded-lg border">
-                <span class="text-gray-600 font-bold mr-2"><i class="fas fa-filter text-blue-500"></i> Period:</span>
-                <button onclick="filterTxByPeriod('all')" id="filter-all" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold active-filter">All Time</button>
-                <button onclick="filterTxByPeriod('day')" id="filter-day" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">Today</button>
-                <button onclick="filterTxByPeriod('week')" id="filter-week" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Week</button>
-                <button onclick="filterTxByPeriod('month')" id="filter-month" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Month</button>
-                <button onclick="filterTxByPeriod('year')" id="filter-year" class="filter-btn px-4 py-1.5 rounded-full border border-gray-300 text-sm font-bold bg-white">This Year</button>
-            </div>
-
-            <div class="overflow-y-auto flex-1">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-100 sticky top-0 shadow-sm">
-                        <tr class="text-gray-600 text-sm font-bold">
-                            <th class="p-3 border-b">Date</th>
-                            <th class="p-3 border-b">Category</th>
-                            <th class="p-3 border-b">Note</th>
-                            <th class="p-3 border-b">Type</th>
-                            <th class="p-3 border-b">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="txTableBody" class="divide-y divide-gray-100">
-                        </tbody>
-                </table>
-            </div>
-            <div id="txPagination" class="flex justify-center space-x-2 pt-4 border-t mt-4"></div>
-        </div>
-    </div>
-
     <script>
-        // --- PAGINATION CLASS ---
         class DOMPaginator {
             constructor(itemSelector, containerId, itemsPerPage) {
                 this.itemSelector = itemSelector;
@@ -287,13 +302,14 @@
         }
 
         let userPaginator, catPaginator;
-        let currentUserIdGlobal = null;
-        let txDataGlobal = [];
-        const txPerPage = 6;
+        let currentPeriod = 'all';
+        let globalTxData = [];
+        const globalTxPerPage = 10; 
 
         document.addEventListener("DOMContentLoaded", () => {
             userPaginator = new DOMPaginator('.user-row', 'userPagination', 5); 
             catPaginator = new DOMPaginator('.cat-card', 'catPagination', 6);   
+            fetchGlobalData('all'); 
         });
 
         function showSection(sectionId) {
@@ -337,68 +353,128 @@
             .then(res => res.json()).then(data => { if(data.status === 'success') location.reload(); });
         }
 
-        // --- 🚀 UPGRADED TRANSACTION LOGIC ---
-
-        function viewUserTransactions(userId) {
-            currentUserIdGlobal = userId;
-            openModal('txModal');
-            filterTxByPeriod('all'); // Default load all
+        function handleUserChange() {
+            document.getElementById('customStartDate').value = '';
+            document.getElementById('customEndDate').value = '';
+            fetchGlobalData('all');
         }
 
-        function filterTxByPeriod(period) {
-            // Update Filter Button UI
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active-filter', 'bg-white'));
-            document.getElementById('filter-' + period).classList.add('active-filter');
+        // 🎯 NAYA FIX: AUTO-FILL DATES IN INPUT BOXES
+        function getFormattedDate(dateObj) {
+            let year = dateObj.getFullYear();
+            let month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            let day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
 
-            const tbody = document.getElementById('txTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center font-bold text-gray-400">Fetching data... <i class="fas fa-spinner fa-spin ml-2"></i></td></tr>';
+        function fetchGlobalData(period) {
+            currentPeriod = period;
             
-            // 🎯 Calling the API with period parameter
-            let url = "{% url 'user_transactions' 0 %}".replace('0', currentUserIdGlobal) + `?period=${period}`;
+            document.querySelectorAll('.g-filter-btn').forEach(b => {
+                b.classList.remove('active-filter');
+                if(b.id === 'g-custom') b.classList.add('bg-blue-600', 'text-white');
+            });
+
+            const activeBtn = document.getElementById('g-' + period);
+            if(activeBtn) {
+                activeBtn.classList.add('active-filter');
+                if(period === 'custom') activeBtn.classList.remove('bg-blue-600', 'text-white');
+            }
+
+            // 🎯 JAISE HI BUTTON DABAOGE, DATES APNE AAP BHAR JAYENGI
+            let today = new Date();
+            let startBox = document.getElementById('customStartDate');
+            let endBox = document.getElementById('customEndDate');
+
+            if(period === 'day') {
+                startBox.value = getFormattedDate(today);
+                endBox.value = getFormattedDate(today);
+            } else if(period === 'week') {
+                let startWeek = new Date(today);
+                startWeek.setDate(today.getDate() - 7);
+                startBox.value = getFormattedDate(startWeek);
+                endBox.value = getFormattedDate(today);
+            } else if(period === 'month') {
+                let startMonth = new Date(today);
+                startMonth.setDate(today.getDate() - 30);
+                startBox.value = getFormattedDate(startMonth);
+                endBox.value = getFormattedDate(today);
+            } else if(period === 'year') {
+                let startYear = new Date(today.getFullYear(), 0, 1); // 1st Jan of current year
+                startBox.value = getFormattedDate(startYear);
+                endBox.value = getFormattedDate(today);
+            } else if(period === 'all') {
+                startBox.value = '';
+                endBox.value = '';
+            }
+
+            const tbody = document.getElementById('globalTxContainer');
+            const viewTextLabel = document.getElementById('currentViewText');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center font-bold text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> Loading Data...</td></tr>';
             
+            let selectedUserId = document.getElementById('userFilter').value || '0';
+            let url = "{% url 'user_transactions' 0 %}".replace('0', selectedUserId) + `?period=${period}`;
+            
+            let viewText = "";
+
+            if(period === 'custom') {
+                let start = startBox.value;
+                let end = endBox.value;
+                if(!start || !end) {
+                    alert("Please select Start and End dates!");
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center font-bold text-red-500">Select dates and try again.</td></tr>';
+                    return;
+                }
+                url += `&start_date=${start}&end_date=${end}`;
+                viewText = `Custom Range: ${start} to ${end}`;
+            } else {
+                viewText = period === 'all' ? 'All Time' : period.charAt(0).toUpperCase() + period.slice(1);
+            }
+
+            viewTextLabel.innerText = "Showing: " + viewText;
+
             fetch(url)
             .then(res => res.json())
             .then(data => {
-                document.getElementById('txUserSubtitle').innerText = "Viewing ledger for " + data.user;
-                txDataGlobal = data.transactions || [];
-                renderTxPage(1);
+                globalTxData = data.transactions || [];
+                renderGlobalTxPage(1);
             })
             .catch(() => {
                 tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Failed to load transactions.</td></tr>';
             });
         }
 
-        function renderTxPage(page) {
-            const tbody = document.getElementById('txTableBody');
+        function renderGlobalTxPage(page) {
+            const tbody = document.getElementById('globalTxContainer');
             tbody.innerHTML = '';
             
-            let totalPages = Math.ceil(txDataGlobal.length / txPerPage);
+            let totalPages = Math.ceil(globalTxData.length / globalTxPerPage);
             if (totalPages === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400">No records found for this period.</td></tr>';
-                document.getElementById('txPagination').innerHTML = '';
+                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 font-bold">No records found.</td></tr>';
+                document.getElementById('globalTxPagination').innerHTML = '';
                 return;
             }
 
-            let start = (page - 1) * txPerPage;
-            let pageData = txDataGlobal.slice(start, start + txPerPage);
+            let start = (page - 1) * globalTxPerPage;
+            let pageData = globalTxData.slice(start, start + globalTxPerPage);
 
             pageData.forEach(tx => {
-                let colorClass = tx.type === 'INCOME' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
+                let badgeClass = tx.type === 'INCOME' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
                 tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50 transition">
+                    <tr class="hover:bg-blue-50 transition border-b border-gray-50">
                         <td class="p-4 text-sm text-gray-500 font-medium">${tx.date}</td>
-                        <td class="p-4 font-bold text-gray-800">${tx.category}</td>
-                        <td class="p-4 text-sm text-gray-400 italic">${tx.note}</td>
-                        <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${colorClass}">${tx.type}</span></td>
-                        <td class="p-4 font-black text-lg text-gray-900">₹${tx.amount}</td>
+                        <td class="p-4 font-bold text-gray-800">${tx.username || 'Unknown'}</td>
+                        <td class="p-4 text-gray-700">${tx.category}</td>
+                        <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${badgeClass}">${tx.type}</span></td>
+                        <td class="p-4 font-black text-lg text-gray-900 text-right">₹${tx.amount}</td>
                     </tr>`;
             });
 
-            renderTxPaginationButtons(page, totalPages);
+            renderGlobalPaginationButtons(page, totalPages);
         }
 
-        function renderTxPaginationButtons(currentPage, totalPages) {
-            const container = document.getElementById('txPagination');
+        function renderGlobalPaginationButtons(currentPage, totalPages) {
+            const container = document.getElementById('globalTxPagination');
             container.innerHTML = '';
             if (totalPages <= 1) return;
 
@@ -411,7 +487,7 @@
                 let btn = document.createElement('button');
                 btn.innerText = text;
                 btn.className = `px-4 py-2 rounded-lg border font-bold text-xs shadow-sm transition ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : (isCurrent ? 'bg-blue-600 text-white border-blue-700' : 'bg-white hover:bg-gray-100')}`;
-                if(!isDisabled) btn.onclick = () => renderTxPage(target);
+                if(!isDisabled) btn.onclick = () => renderGlobalTxPage(target);
                 return btn;
             };
 
