@@ -19,6 +19,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from .models import CustomUser
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.contrib.auth import get_user_model
+
+# Custom User model fetch karne ke liye (agar file mein upar import nahi hai toh)
+User = get_user_model()
 
 # --- 1. SIGNUP VIEW (OTP LOGIC KE SAATH) ---
 class SignupView(views.APIView):
@@ -143,14 +148,34 @@ class UserProfileView(views.APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        user = request.user
+
+        # 1. FCM Token Update Logic (Tumhara original code)
         fcm = request.data.get('fcm_token')
         if fcm:
-            request.user.fcm_token = fcm
-            request.user.save()
-        serializer = ProfileUpdateSerializer(request.user, data=request.data, partial=True)
+            user.fcm_token = fcm
+            user.save()
+
+        # 2. 🛡️ SOLID FIX: Email Duplication Check
+        new_email = request.data.get('email')
+        if new_email and new_email != user.email:
+            if User.objects.filter(email=new_email).exists():
+                return Response(
+                    {"email": "This email is already in use by another user! ❌"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # 3. Asli Update Logic (Tumhare Serializer ke through)
+        # partial=True ka matlab hai ki jo data aayega sirf wahi update hoga, baki safe rahega
+        serializer = ProfileUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Profile updated!", "data": serializer.data}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Profile updated successfully! ✅", "data": serializer.data}, 
+                status=status.HTTP_200_OK
+            )
+        
+        # Agar koi aur error aati hai (jaise mobile number format), toh wo yahan se jayegi
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
