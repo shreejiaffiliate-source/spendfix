@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-&&7^qpnkl2cfg)ft!%jgx$!7a_sjmzp6mjy=^!#oy^=ecxg3-l
 DEBUG = True
 
 # settings.py
-ALLOWED_HOSTS = ["www.spendfix.shreejifintech.com"] # '*' Presentation ke liye safe hai
+ALLOWED_HOSTS = ["spendfix.shreejifintech.com","www.spendfix.shreejifintech.com"] # '*' Presentation ke liye safe hai
 CSRF_TRUSTED_ORIGINS = [
  'https://www.spendfix.shreejifintech.com'
 ]
