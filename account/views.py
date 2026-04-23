@@ -150,13 +150,22 @@ class UserProfileView(views.APIView):
     def post(self, request):
         user = request.user
 
-        # 1. FCM Token Update Logic (Tumhara original code)
+        # 1. FCM Token Update Logic
         fcm = request.data.get('fcm_token')
         if fcm:
             user.fcm_token = fcm
             user.save()
 
-        # 2. 🛡️ SOLID FIX: Email Duplication Check
+        # 🛡️ Name/Username Duplication Check
+        new_name = request.data.get('name')
+        if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
+            if User.objects.filter(username=new_name).exists():
+                return Response(
+                    {"name": "This name is already taken! Please use a different name. 👤❌"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # 2. 🛡️ Email Duplication Check
         new_email = request.data.get('email')
         if new_email and new_email != user.email:
             if User.objects.filter(email=new_email).exists():
@@ -165,8 +174,16 @@ class UserProfileView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # 3. Asli Update Logic (Tumhare Serializer ke through)
-        # partial=True ka matlab hai ki jo data aayega sirf wahi update hoga, baki safe rahega
+        # 3. 🛡️ Phone Number Duplication Check (Naya logic jo tumne maanga)
+        new_phone = request.data.get('phone')
+        if new_phone and new_phone != user.phone:
+            if User.objects.filter(phone=new_phone).exists():
+                return Response(
+                    {"phone": "This number is already in use! Please enter another number. 📱❌"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # 4. Asli Update Logic
         serializer = ProfileUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -175,9 +192,7 @@ class UserProfileView(views.APIView):
                 status=status.HTTP_200_OK
             )
         
-        # Agar koi aur error aati hai (jaise mobile number format), toh wo yahan se jayegi
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # --- 4. GOOGLE LOGIN VIEW (SAME AS BEFORE) ---
 class GoogleLoginView(views.APIView):

@@ -64,10 +64,24 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 # 3. 📝 Edit Profile ke liye Naya Serializer
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-    # AbstractUser mein first_name pehle se hota hai, hum usko 'name' ki tarah use karenge
+    # Flutter se 'name' aayega, use hum 'username' field mein map karenge
     name = serializers.CharField(source='username', required=False) 
 
     class Meta:
         model = CustomUser
+        # Phone aur Email ko explicitly include karo
         fields = ['id', 'username', 'name', 'email', 'phone', 'profile_pic']
-        read_only_fields = ['username', 'id'] # Username aur ID change nahi kar sakte
+        # Read only sirf ID ko rakho, username ko nahi warna update nahi hoga
+        read_only_fields = ['id'] 
+
+    def update(self, instance, validated_data):
+        # Data ko update karne ka makkhan logic
+        instance.username = validated_data.get('username', instance.username)
+        instance.email = validated_data.get('email', instance.email)
+        instance.phone = validated_data.get('phone', instance.phone)
+        
+        if 'profile_pic' in validated_data:
+            instance.profile_pic = validated_data.get('profile_pic', instance.profile_pic)
+            
+        instance.save()
+        return instance
