@@ -161,7 +161,7 @@ class UserProfileView(views.APIView):
         if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
             if User.objects.filter(username=new_name).exists():
                 return Response(
-                    {"name": "This name is already taken! Please use a different name. 👤❌"}, 
+                    {"name": "This name is already taken! Please use a different name. 👤"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -179,7 +179,7 @@ class UserProfileView(views.APIView):
         if new_phone and new_phone != user.phone:
             if User.objects.filter(phone=new_phone).exists():
                 return Response(
-                    {"phone": "This number is already in use! Please enter another number. 📱❌"}, 
+                    {"phone": "This number is already in use! Please enter another number. ❌"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
