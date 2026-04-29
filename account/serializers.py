@@ -33,33 +33,36 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             Q(phone__iexact=identifier)
         ).first()
 
-        # Agar user mil gaya aur password match ho gaya
-        if user and user.check_password(password):
+        # ===============================================
+        # 🎯 NAYA FIX: Alag-alag checking hogi ab!
+        # ===============================================
+        
+        # 1. Agar Data base mein user ka Email/Phone/ID mila hi nahi:
+        if not user:
+            raise serializers.ValidationError({"detail": "Invalid Email or Phone please check !"})
 
-            # ===============================================
-            # 🎯 NAYA FIX: BLOCK CHECK YAHAN AAYEGA
-            # ===============================================
-            if not user.is_active:
-                raise serializers.ValidationError({
-                    "detail": "🚫 You have been BLOCKED by Admin!"
-                })
-            # ===============================================
-            
-            # Khud se Token banao aur bhejo (SimpleJWT ki zidd khatam)
-            refresh = self.get_token(user)
+        # 2. Agar User mil gaya, par usne Password galat daala hai:
+        if not user.check_password(password):
+            raise serializers.ValidationError({"detail": "Incorrect password!"})
 
-            data = {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'phone': user.phone,
-            }
-            return data
-        else:
-            # Agar match nahi hua toh error bhejo
-            raise serializers.ValidationError({"detail": "Email/Phone ya Password galat hai!"})
+        # 3. Agar User sahi hai par Admin ne Block kiya hua hai:
+        if not user.is_active:
+            raise serializers.ValidationError({"detail": "🚫 You have been BLOCKED by Admin!"})
+
+        # ===============================================
+
+        # Agar upar ki teeno test paas ho gaye, matlab sab theek hai! Token bhejo.
+        refresh = self.get_token(user)
+
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'phone': user.phone,
+        }
+        return data 
 
 
 # 3. 📝 Edit Profile ke liye Naya Serializer

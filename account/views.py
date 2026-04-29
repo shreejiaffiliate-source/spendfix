@@ -4,6 +4,7 @@ import random  # 🎯 OTP ke liye
 import random  # 👈 Ye line honi chahiye
 from django.core.mail import send_mail  # 🎯 Email bhejane ke liye
 from django.conf import settings
+from django.core.cache import cache # 🎯 NAYA IMPORT: Memory me data rakhne ke liye
 from django.utils.crypto import get_random_string
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser 
@@ -32,40 +33,37 @@ class SignupView(views.APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            # User save karo
-            user = serializer.save()
+            email = request.data.get('email')
             
             # 🎯 OTP Generate karo (6 digits)
             otp = str(random.randint(100000, 999999))
-            user.otp = otp
-            user.is_active = False  # Jab tak verify na ho, login band
-            user.save()
 
-            # 🎯 Email bhejo
+            # 🎯 JADU YAHAN HAI: Data ko Database me nahi, CACHE (Memory) me save karo 15 minute ke liye
+            cache_data = {
+                'user_data': request.data,
+                'otp': otp
+            }
+            cache.set(f"signup_{email}", cache_data, timeout=900) # 900 seconds = 15 mins
+
+            # 🎯 NAYA ENGLISH MESSAGE
             subject = "SpendFix - Verify Your Account"
-            message = f"Namaste {user.username}!\n\nSpendFix par aapka swagat hai. Apna account verify karne ke liye ye OTP dalein: {otp}\n\nHappy Budgeting!"
+            username = request.data.get('name', 'User')
+            message = f"Hello {username},\n\nWelcome to SpendFix! Please use the following OTP to verify your account:\n\n{otp}\n\nHappy Budgeting!"
             
             try:
-                send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])
+                send_mail(subject, message, settings.EMAIL_HOST_USER, [email])
                 return Response({
-                    "message": "User created! Please check email for OTP.",
-                    "user_id": user.id,
-                    "email": user.email
-                }, status=status.HTTP_201_CREATED)
+                    "message": "OTP sent! Please check your email.",
+                    "email": email
+                }, status=status.HTTP_200_OK)
             except Exception as e:
                 print(f"❌ Email Error: {e}")
-                # Agar email fail ho jaye, tab bhi response 201 bhej rahe hain taaki user ko pata chale account ban gaya hai
-                return Response({
-                    "message": "Account created but email failed. Please contact support.",
-                    "user_id": user.id
-                }, status=201)
+                return Response({"error": "Failed to send email. Check configuration."}, status=500)
         
-        # 🎯 Debugging ke liye errors print karein
-        print(f"❌ Signup Errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# --- 2. NAYA VERIFY OTP VIEW ---
+# --- 2. NAYA VERIFY OTP VIEW (YAHAN DATABASE MEIN SAVE HOGA) ---
 class VerifyOTPView(views.APIView):
     permission_classes = [AllowAny]
 
@@ -76,29 +74,39 @@ class VerifyOTPView(views.APIView):
         if not email or not otp:
             return Response({"error": "Email and OTP are required!"}, status=400)
 
-        user = CustomUser.objects.filter(email=email).first()
+        # 🎯 Cache se data nikalo
+        cached_data = cache.get(f"signup_{email}")
 
-        if not user:
-            return Response({"error": "User not found!"}, status=404)
+        if not cached_data:
+            return Response({"error": "Session expired or email not found! Please signup again."}, status=400)
 
         # 🎯 OTP Check karo
-        if user.otp == otp:
-            user.is_active = True  # Account active karo
-            user.otp = None  # OTP clear kar do
-            user.save()
+        if cached_data['otp'] == otp:
+            # 🎯 OTP SAHI HAI! AB USER KO ASLI DATABASE (Admin Panel) MEIN SAVE KARENGE
+            serializer = UserSerializer(data=cached_data['user_data'])
+            if serializer.is_valid():
+                user = serializer.save()
+                user.is_active = True
+                user.save()
 
-            # Verify hote hi login token bhi bhej dete hain
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                "message": "Account verified successfully!",
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "username": user.username
-            }, status=200)
+                # Save hone ke baad cache kachra saaf kar do
+                cache.delete(f"signup_{email}")
+
+                # Login Token bhej do
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    "message": "Account verified and created successfully!",
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "username": user.username
+                }, status=200)
+            else:
+                return Response(serializer.errors, status=400)
         else: 
             return Response({"error": "Galat OTP! Fir se check karein."}, status=400)
         
-# 🎯 RESEND OTP VIEW
+
+# --- 3. RESEND OTP VIEW ---
 class ResendOTPView(views.APIView):
     permission_classes = [AllowAny]
 
@@ -108,28 +116,26 @@ class ResendOTPView(views.APIView):
         if not email:
             return Response({"error": "Email is required!"}, status=400)
 
-        user = CustomUser.objects.filter(email=email).first()
+        # 🎯 Cache se purana data nikalo
+        cached_data = cache.get(f"signup_{email}")
 
-        if not user:
-            return Response({"error": "User not found!"}, status=404)
-        
-        if user.is_active:
-            return Response({"error": "User is already verified!"}, status=400)
+        if not cached_data:
+            return Response({"error": "Session expired! Please signup again."}, status=400)
 
         # Naya OTP generate karein
-        import random
         otp = str(random.randint(100000, 999999))
-        user.otp = otp
-        user.save()
+        cached_data['otp'] = otp
+        
+        # Cache update kar do
+        cache.set(f"signup_{email}", cached_data, timeout=900)
 
-        # Email bhejein
+        # 🎯 NAYA ENGLISH MESSAGE
         subject = "SpendFix - Your New OTP"
-        message = f"Namaste {user.username}!\n\nAapka naya verification OTP hai: {otp}\n\nHappy Budgeting!"
+        username = cached_data['user_data'].get('name', 'User')
+        message = f"Hello {username},\n\nYour new verification OTP is:\n\n{otp}\n\nHappy Budgeting!"
         
         try:
-            from django.core.mail import send_mail
-            from django.conf import settings
-            send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])
+            send_mail(subject, message, settings.EMAIL_HOST_USER, [email])
             return Response({"message": "New OTP sent successfully!"}, status=200)
         except Exception as e:
             return Response({"error": "Failed to send email."}, status=500)
