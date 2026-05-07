@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import CustomUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.db.models import Q # 🔥 Teeno cheezein check karne ke liye ye zaroori hai
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 # 1. Signup ke liye Serializer (Ekdum perfect hai)
 class UserSerializer(serializers.ModelSerializer):
@@ -21,48 +23,54 @@ class UserSerializer(serializers.ModelSerializer):
 
 # 2. Login ke liye Super Smart Serializer (🔥 YAHAN MAGIC HAI)
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        # User ne jo daala hai (Email, Phone, ya Username) wo nikalo
-        identifier = attrs.get('username')
-        password = attrs.get('password')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 🎯 NAYA FIX: SimpleJWT ki zidd todne ke liye! 
+        # Ab wo automatically kisi field ko zaroori (required) nahi manega.
+        self.fields[self.username_field] = serializers.CharField(required=False)
 
-        # Database mein teeno jagah dhoondho
-        user = CustomUser.objects.filter(
+    def validate(self, attrs):
+        # Request object se data nikalenge taaki chahe 'username', 'email' ya 'phone' aaye, sab pakad lein
+        request = self.context.get('request')
+        identifier = request.data.get('username') or request.data.get('email') or request.data.get('phone')
+        password = request.data.get('password')
+
+        if not identifier:
+             raise serializers.ValidationError({"error": "Please enter Email or Phone number."})
+             
+        if not password:
+             raise serializers.ValidationError({"error": "Please enter your password."})
+
+        # Database mein teeno jagah dhoondho (Aapka logic)
+        user = User.objects.filter(
             Q(username__iexact=identifier) | 
             Q(email__iexact=identifier) | 
             Q(phone__iexact=identifier)
         ).first()
-
-        # ===============================================
-        # 🎯 NAYA FIX: Alag-alag checking hogi ab!
-        # ===============================================
         
-        # 1. Agar Data base mein user ka Email/Phone/ID mila hi nahi:
+        # 1. Agar Database mein user ka Email/Phone/ID mila hi nahi:
         if not user:
-            raise serializers.ValidationError({"detail": "Invalid Email or Phone please check !"})
+            raise serializers.ValidationError({"error": "Invalid Email or Phone please check!"})
 
         # 2. Agar User mil gaya, par usne Password galat daala hai:
         if not user.check_password(password):
-            raise serializers.ValidationError({"detail": "Incorrect password!"})
+            raise serializers.ValidationError({"error": "Incorrect password!"})
 
         # 3. Agar User sahi hai par Admin ne Block kiya hua hai:
         if not user.is_active:
-            raise serializers.ValidationError({"detail": "🚫 You have been BLOCKED by Admin!"})
+            raise serializers.ValidationError({"error": "🚫 You have been BLOCKED by Admin!"})
 
-        # ===============================================
-
-        # Agar upar ki teeno test paas ho gaye, matlab sab theek hai! Token bhejo.
+        # Agar sab theek hai toh Token generate karo
         refresh = self.get_token(user)
 
-        data = {
+        return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'id': user.id,
-            'username': user.username,
+            'username': user.username if user.username else user.first_name,
             'email': user.email,
             'phone': user.phone,
-        }
-        return data 
+        } 
 
 
 # 3. 📝 Edit Profile ke liye Naya Serializer

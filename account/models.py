@@ -3,7 +3,11 @@ from django.db import models
 
 class CustomUser(AbstractUser):
     # 🎯 NAYA FIX 1: Django ke chhupay hue username ko override karke unique=False karo
-    username = models.CharField(max_length=150, unique=False)
+    username = models.CharField(
+        max_length=150, 
+        unique=False, 
+        verbose_name="Full Name"  # 🎯 YE LINE ADD KARO
+    )
     
     phone = models.CharField(
         max_length=15, 

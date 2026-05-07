@@ -162,15 +162,14 @@ class UserProfileView(views.APIView):
             user.fcm_token = fcm
             user.save()
 
-        # # 🛡️ Name/Username Duplication Check
-        # new_name = request.data.get('name')
-        # if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
-        #     if User.objects.filter(username=new_name).exists():
-        #         return Response(
-        #             {"name": "This name is already taken! Please use a different name. 👤"}, 
-        #             status=status.HTTP_400_BAD_REQUEST
-        #         )
-
+        # 🛡️ Name/Username Duplication Check
+        new_name = request.data.get('name')
+        if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
+            if User.objects.filter(username=new_name).exists():
+                return Response(
+                    {"name": "This name is already taken! Please use a different name. 👤"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # 2. 🛡️ Email Duplication Check
         new_email = request.data.get('email')
