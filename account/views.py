@@ -103,7 +103,7 @@ class VerifyOTPView(views.APIView):
             else:
                 return Response(serializer.errors, status=400)
         else: 
-            return Response({"error": "Galat OTP! Fir se check karein."}, status=400)
+            return Response({"error": "Invalid OTP! Please try again."}, status=400)
         
 
 # --- 3. RESEND OTP VIEW ---
@@ -162,14 +162,15 @@ class UserProfileView(views.APIView):
             user.fcm_token = fcm
             user.save()
 
-        # 🛡️ Name/Username Duplication Check
-        new_name = request.data.get('name')
-        if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
-            if User.objects.filter(username=new_name).exists():
-                return Response(
-                    {"name": "This name is already taken! Please use a different name. 👤"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        # # 🛡️ Name/Username Duplication Check
+        # new_name = request.data.get('name')
+        # if new_name and new_name != user.username: # ya 'user.name' jo bhi field aapne rakhi ho
+        #     if User.objects.filter(username=new_name).exists():
+        #         return Response(
+        #             {"name": "This name is already taken! Please use a different name. 👤"}, 
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
+
 
         # 2. 🛡️ Email Duplication Check
         new_email = request.data.get('email')
@@ -320,9 +321,15 @@ class ForgotPasswordView(views.APIView):
             user.otp = otp
             user.save()
 
-            # Email bhejte waqt error catch karo
-            subject = "SpendFix - Reset OTP" 
-            message = f"OTP: {otp}"
+            # 🎯 NAYA FIX: Ekdum Professional aur Lamba Message
+            subject = "SpendFix - Password Reset OTP" 
+            
+            # User ka naam nikalenge, agar nahi hai toh 'User' bolenge
+            username = user.first_name if user.first_name else user.username
+            if not username:
+                username = "User"
+
+            message = f"Hello {username},\n\nWe received a request to reset your SpendFix account password.\n\nYour 6-digit OTP for password reset is:\n\n{otp}\n\nIf you did not request a password reset, please ignore this email.\n\nThanks,\nTeam SpendFix"
             
             send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email])
             
@@ -365,3 +372,61 @@ class UpdatePasswordView(views.APIView):
         user.save()
 
         return Response({"message": "Password updated successfully!"}, status=200)
+
+# =======================================================
+# 📧 NAYA FEATURE: EDIT PROFILE - EMAIL UPDATE OTP LOGIC
+# =======================================================
+
+class SendUpdateEmailOTPView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required!"}, status=400)
+
+        # 🛡️ SECURITY CHECK: Agar koi naya email daal raha hai, toh check karo ki wo pehle se kisi aur ka toh nahi hai
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            return Response({"error": "This email is already in use by another user! ❌"}, status=400)
+
+        # OTP Generate karo
+        otp = str(random.randint(100000, 999999))
+        
+        # Cache me save karo (15 minutes ke liye)
+        cache.set(f"update_email_{email}", otp, timeout=900)
+
+        # Pyara sa Email Message
+        subject = "SpendFix - Verify Your New Email"
+        message = f"Hello,\n\nYou have requested to update your email address on SpendFix.\n\nYour 6-digit OTP to verify this new email is:\n\n{otp}\n\nIf you did not make this request, please ignore this email.\n\nHappy Budgeting!\nTeam SpendFix"
+        
+        try:
+            send_mail(subject, message, settings.EMAIL_HOST_USER, [email])
+            return Response({"message": "OTP sent successfully!"}, status=200)
+        except Exception as e:
+            print(f"❌ Send Update Email Error: {e}")
+            return Response({"error": "Failed to send email. Check server configuration."}, status=500)
+
+
+class VerifyUpdateEmailOTPView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({"error": "Email and OTP are required!"}, status=400)
+
+        # Cache se nikalo
+        cached_otp = cache.get(f"update_email_{email}")
+
+        if not cached_otp:
+            return Response({"error": "OTP expired or not found! Please resend OTP."}, status=400)
+
+        # Check karo ki OTP match hua ya nahi
+        if cached_otp == otp:
+            cache.delete(f"update_email_{email}") # OTP sahi nikla toh kachra saaf kar do
+            return Response({"message": "OTP Verified Successfully!"}, status=200)
+        else:
+            return Response({"error": "Invalid OTP! Please try again."}, status=400)

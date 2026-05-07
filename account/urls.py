@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from account.views import ForgotPasswordView, GoogleLoginView, ResendOTPView, SignupView, MyTokenObtainPairView, UpdatePasswordView, UserProfileView, VerifyOTPView, VerifyResetOTPView, reset_password_direct    
+from account.views import ForgotPasswordView, GoogleLoginView, ResendOTPView, SendUpdateEmailOTPView, SignupView, MyTokenObtainPairView, UpdatePasswordView, UserProfileView, VerifyOTPView, VerifyResetOTPView, VerifyUpdateEmailOTPView, reset_password_direct    
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -21,4 +21,8 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('verify-reset-otp/', VerifyResetOTPView.as_view(), name='verify_reset_otp'),
     path('update-password/', UpdatePasswordView.as_view(), name='update_password'),
+
+    path('send-update-email-otp/', SendUpdateEmailOTPView.as_view(), name='send_update_email_otp'),
+    path('verify-update-email-otp/', VerifyUpdateEmailOTPView.as_view(), name='verify_update_email_otp'),
+
 ]

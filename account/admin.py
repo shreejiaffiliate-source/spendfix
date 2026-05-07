@@ -9,8 +9,13 @@ admin.site.unregister(Group)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
     
-    # Table list mein kya dikhega
-    list_display = ['id', 'username', 'email', 'phone', 'is_active']
+    # Table mein kaunse columns dikhane hain
+    list_display = ('id', 'get_full_name_label', 'email', 'phone', 'is_active')
+
+    # 🎯 NAYA FIX: Username column ka header badalne ke liye
+    def get_full_name_label(self, obj):
+        return obj.username
+    get_full_name_label.short_description = 'Full Name' # Yahan header badlega
     
     # 🔥 EXACT VASTRAFIX LAYOUT 🔥
     fieldsets = (
