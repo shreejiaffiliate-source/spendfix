@@ -17,7 +17,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
+# Quick-start deelopment settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -27,7 +27,8 @@ SECRET_KEY = 'django-insecure-&&7^qpnkl2cfg)ft!%jgx$!7a_sjmzp6mjy=^!#oy^=ecxg3-l
 DEBUG = True
 
 # settings.py
-ALLOWED_HOSTS = ["spendfix.shreejifintech.com","www.spendfix.shreejifintech.com",'*'] # '*' Presentation ke liye safe hai
+#ALLOWED_HOSTS = ["spendfix.shreejifintech.com","www.spendfix.shreejifintech.com",'*'] # '*' Presentation ke liye safe hai
+ALLOWED_HOSTS = ['www.spendfix.shreejifintech.com'] # '*' Presentation ke liye safe hai
 CSRF_TRUSTED_ORIGINS = [
  'https://www.spendfix.shreejifintech.com'
 ]
@@ -189,3 +190,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'shreejiaffiliate@gmail.com'
 EMAIL_HOST_PASSWORD = 'pxbqlsrnwpfjlgwp'
 DEFAULT_FROM_EMAIL = 'Spendfix <shreejiaffiliate@gmail.com>'
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False
