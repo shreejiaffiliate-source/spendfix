@@ -22,7 +22,7 @@ urlpatterns = [
     path('verify-reset-otp/', VerifyResetOTPView.as_view(), name='verify_reset_otp'),
     path('update-password/', UpdatePasswordView.as_view(), name='update_password'),
 
-    path('send-update-email-otp/', SendUpdateEmailOTPView.as_view(), name='send_update_email_otp'),
-    path('verify-update-email-otp/', VerifyUpdateEmailOTPView.as_view(), name='verify_update_email_otp'),
+    path('send-update-email-otp/', SendUpdateEmailOTPView.as_view(), name='send_update_email_otp'), # forgot passwrod otp 
+    path('verify-update-email-otp/', VerifyUpdateEmailOTPView.as_view(), name='verify_update_email_otp'), # # forgot password resend otp 
 
 ]
